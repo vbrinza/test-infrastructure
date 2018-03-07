@@ -1,0 +1,39 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: eval
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: eval
+    spec:
+      containers:
+      - name: eval
+        image: pithagora/eval:0.0.1
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: prod
+        - name: SPRING_DATASOURCE_URL
+          value: jdbc:mysql://localhost:3306/xeval-13?useUnicode=true&characterEncoding=utf8&useSSL=false
+        ports:
+        - containerPort: 8080
+      - image: b.gcr.io/cloudsql-docker/gce-proxy:1.05
+        name: cloudsql-proxy
+        command: ["/cloud_sql_proxy", "--dir=/cloudsql",
+                  "-instances=xeval-13:europe-west1:xeval-13=tcp:3306",
+                  "-credential_file=/secrets/cloudsql/credentials.json"]
+        volumeMounts:
+          - name: cloudsql-oauth-credentials
+            mountPath: /secrets/cloudsql
+            readOnly: true
+          - name: ssl-certs
+            mountPath: /etc/ssl/certs
+      volumes:
+        - name: cloudsql-oauth-credentials
+          secret:
+            secretName: cloudsql-oauth-credentials
+        - name: ssl-certs
+          hostPath:
+            path: /etc/ssl/certs
